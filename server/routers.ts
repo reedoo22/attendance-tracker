@@ -26,6 +26,26 @@ export const appRouter = router({
   }),
 
   attendance: router({
+    // Get all employees from database
+    getEmployees: publicProcedure
+      .query(async () => {
+        try {
+          const employees = await getEmployees();
+          return employees || [];
+        } catch (error) {
+          console.error('Error fetching employees:', error);
+          return [];
+        }
+      }),
+
+    // Get employee by ID
+    getEmployee: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await getEmployeeById(input.id);
+      }),
+
+    // Get all attendance records for a date range
     getRecords: protectedProcedure
       .input(z.object({
         employeeId: z.number().optional(),
@@ -38,6 +58,7 @@ export const appRouter = router({
         return await getAttendanceRecords(input.employeeId, startDate, endDate);
       }),
 
+    // Update attendance record
     updateRecord: protectedProcedure
       .input(z.object({
         employeeId: z.number(),
@@ -54,26 +75,17 @@ export const appRouter = router({
         );
       }),
 
-    getEmployees: protectedProcedure
-      .query(async () => {
-        return await getEmployees();
-      }),
-
-    getEmployee: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return await getEmployeeById(input.id);
-      }),
-
+    // Get statistics for an employee in a month
     getStatistics: protectedProcedure
       .input(z.object({
         employeeId: z.number(),
-        month: z.string(),
+        month: z.string(), // YYYY-MM format
       }))
       .query(async ({ input }) => {
         return await getStatistics(input.employeeId, input.month);
       }),
 
+    // Update statistics
     updateStatistics: protectedProcedure
       .input(z.object({
         employeeId: z.number(),

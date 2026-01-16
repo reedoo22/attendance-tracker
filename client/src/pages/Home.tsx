@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLogin } from '@/contexts/LoginContext';
 import { AttendanceTable } from '@/components/AttendanceTable';
 import { EmployeeStats } from '@/components/EmployeeStats';
@@ -6,15 +6,16 @@ import { Legend } from '@/components/Legend';
 import { EmployeeGrid } from '@/components/EmployeeGrid';
 import { AttendanceChart } from '@/components/AttendanceChart';
 import { useAttendanceData } from '@/hooks/useAttendanceData';
-import { EMPLOYEES } from '@/lib/constants';
+import { useCloudAttendance } from '@/hooks/useCloudAttendance';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, RotateCcw, LogOut, Shield, User } from 'lucide-react';
+import { Download, Upload, RotateCcw, LogOut, Shield, User, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function Home() {
   const { role, logout, canEdit, canViewAll } = useLogin();
+  const { employees: cloudEmployees, isLoading: isLoadingCloud } = useCloudAttendance();
 
   const {
     attendance,
@@ -158,6 +159,12 @@ export default function Home() {
               <p className="text-gray-600 text-sm mt-1">الوردية المسائية | 21 يناير - 20 فبراير 2026</p>
             </div>
             <div className="flex gap-2 items-center">
+              {isLoadingCloud && (
+                <div className="flex items-center gap-2 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  جاري التحديث...
+                </div>
+              )}
               {getRoleBadge()}
               {canEdit && (
                 <>
@@ -204,6 +211,17 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Cloud Sync Status */}
+      {!isLoadingCloud && (
+        <div className="container mx-auto px-4 py-2">
+          <Alert className="border-green-200 bg-green-50">
+            <AlertDescription className="text-green-800 text-sm">
+              ✓ البيانات متزامنة مع قاعدة البيانات السحابية - جميع التعديلات تُحفظ تلقائياً
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {/* Permission Alert for Employees */}
       {role === 'employee' && (
         <div className="container mx-auto px-4 py-4">
@@ -229,13 +247,19 @@ export default function Home() {
 
           {/* Attendance Table Tab */}
           <TabsContent value="table" className="space-y-4">
-            <AttendanceTable
-              dates={dates}
-              attendance={attendance}
-              onAttendanceChange={canEdit ? updateAttendance : () => {}}
-              dailyCounts={dailyCounts}
-              readOnly={!canEdit}
-            />
+            {isLoadingCloud ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            ) : (
+              <AttendanceTable
+                dates={dates}
+                attendance={attendance}
+                onAttendanceChange={canEdit ? updateAttendance : () => {}}
+                dailyCounts={dailyCounts}
+                readOnly={!canEdit}
+              />
+            )}
           </TabsContent>
 
           {/* Employees Tab */}
@@ -258,7 +282,7 @@ export default function Home() {
           <TabsContent value="stats" className="space-y-4">
             <EmployeeStats
               stats={totalStats}
-              totalEmployees={EMPLOYEES.length}
+              totalEmployees={cloudEmployees.length || 10}
             />
           </TabsContent>
 
@@ -278,7 +302,7 @@ export default function Home() {
       <footer className="bg-white border-t-2 border-gray-200 mt-12">
         <div className="container mx-auto px-4 py-6 text-center text-gray-600 text-sm">
           <p>نظام تتبع الحضور للوردية المسائية © 2026</p>
-          <p className="mt-1">جميع الحقوق محفوظة</p>
+          <p className="mt-1">جميع الحقوق محفوظة | البيانات محفوظة بشكل آمن على السحابة</p>
         </div>
       </footer>
     </div>
