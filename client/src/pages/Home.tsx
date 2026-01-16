@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useAuth } from '@/_core/hooks/useAuth';
 import { AttendanceTable } from '@/components/AttendanceTable';
 import { EmployeeStats } from '@/components/EmployeeStats';
 import { Legend } from '@/components/Legend';
@@ -7,11 +8,14 @@ import { AttendanceChart } from '@/components/AttendanceChart';
 import { useAttendanceData } from '@/hooks/useAttendanceData';
 import { EMPLOYEES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, RotateCcw } from 'lucide-react';
+import { Download, Upload, RotateCcw, LogOut } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { getLoginUrl } from '@/const';
 
 export default function Home() {
+  const { user, isAuthenticated, logout } = useAuth();
+
   const {
     attendance,
     dates,
@@ -21,8 +25,6 @@ export default function Home() {
     exportToJSON,
     importFromJSON
   } = useAttendanceData();
-
-  const [showStats, setShowStats] = useState(true);
 
   // Calculate daily counts
   const dailyCounts = useMemo(() => {
@@ -113,6 +115,28 @@ export default function Home() {
     }
   };
 
+  // Handle logout
+  const handleLogout = async () => {
+    await logout();
+    toast.success('تم تسجيل الخروج بنجاح');
+  };
+
+  // Show login prompt if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
+          <h1 className="text-3xl font-bold text-blue-900 mb-4">نظام تتبع الحضور</h1>
+          <p className="text-gray-600 mb-6">الوردية المسائية</p>
+          <p className="text-gray-500 mb-8">يرجى تسجيل الدخول للوصول إلى النظام</p>
+          <a href={getLoginUrl()}>
+            <Button className="w-full">تسجيل الدخول</Button>
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50">
       {/* Header */}
@@ -122,6 +146,7 @@ export default function Home() {
             <div>
               <h1 className="text-3xl font-bold text-blue-900">نظام تتبع الحضور</h1>
               <p className="text-gray-600 text-sm mt-1">الوردية المسائية | 21 يناير - 20 فبراير 2026</p>
+              {user && <p className="text-gray-500 text-xs mt-1">مرحباً {user.name}</p>}
             </div>
             <div className="flex gap-2">
               <Button
@@ -150,6 +175,15 @@ export default function Home() {
               >
                 <RotateCcw className="w-4 h-4" />
                 إعادة تعيين
+              </Button>
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                خروج
               </Button>
             </div>
           </div>
