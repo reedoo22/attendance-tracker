@@ -5,8 +5,10 @@ import { EmployeeStats } from '@/components/EmployeeStats';
 import { Legend } from '@/components/Legend';
 import { EmployeeGrid } from '@/components/EmployeeGrid';
 import { AttendanceChart } from '@/components/AttendanceChart';
+import { EditModeToolbar } from '@/components/EditModeToolbar';
 import { useAttendanceData } from '@/hooks/useAttendanceData';
 import { useCloudAttendance } from '@/hooks/useCloudAttendance';
+import { useEditMode } from '@/hooks/useEditMode';
 import { Button } from '@/components/ui/button';
 import { Download, Upload, RotateCcw, LogOut, Shield, User, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,6 +18,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 export default function Home() {
   const { role, logout, canEdit, canViewAll } = useLogin();
   const { employees: cloudEmployees, isLoading: isLoadingCloud } = useCloudAttendance();
+  const { editState, pendingChanges, enableEditMode, disableEditMode, trackChange, saveAllChanges, cancelChanges } = useEditMode();
 
   const {
     attendance,
@@ -72,6 +75,14 @@ export default function Home() {
       }
     });
     return stats;
+  };
+
+  // Handle attendance change with edit tracking
+  const handleAttendanceChange = (employeeId: number, dateStr: string, code: string) => {
+    updateAttendance(employeeId, dateStr, code);
+    if (editState.isEditing) {
+      trackChange(`${employeeId}|${dateStr}|${code}`, code);
+    }
   };
 
   // Export handler
@@ -211,6 +222,25 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Edit Mode Toolbar - Only for Admins */}
+      {canEdit && (
+        <div className="sticky top-16 z-40 bg-white border-b">
+          <div className="container mx-auto px-4 py-3">
+            <EditModeToolbar
+              isEditing={editState.isEditing}
+              hasChanges={editState.hasChanges}
+              isSaving={editState.isSaving}
+              lastSyncTime={editState.lastSyncTime}
+              pendingChangesCount={pendingChanges.size}
+              onEnableEdit={enableEditMode}
+              onDisableEdit={disableEditMode}
+              onSave={saveAllChanges}
+              onCancel={cancelChanges}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Cloud Sync Status */}
       {!isLoadingCloud && (
         <div className="container mx-auto px-4 py-2">
@@ -255,9 +285,9 @@ export default function Home() {
               <AttendanceTable
                 dates={dates}
                 attendance={attendance}
-                onAttendanceChange={canEdit ? updateAttendance : () => {}}
+                onAttendanceChange={canEdit ? handleAttendanceChange : () => {}}
                 dailyCounts={dailyCounts}
-                readOnly={!canEdit}
+                readOnly={!canEdit || !editState.isEditing}
               />
             )}
           </TabsContent>
