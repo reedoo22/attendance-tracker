@@ -12,11 +12,29 @@ interface AttendanceCellProps {
   value: string;
   onChange: (value: string) => void;
   dateStr: string;
+  readOnly?: boolean;
 }
 
-export function AttendanceCell({ value, onChange, dateStr }: AttendanceCellProps) {
+export function AttendanceCell({ value, onChange, dateStr, readOnly = false }: AttendanceCellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const codeInfo = ATTENDANCE_CODES[value as keyof typeof ATTENDANCE_CODES] || ATTENDANCE_CODES.P;
+
+  if (readOnly) {
+    return (
+      <div
+        className={`
+          w-full h-12 border-2 font-semibold text-sm
+          flex items-center justify-center rounded
+          transition-all duration-200
+          ${codeInfo.color}
+          ${codeInfo.borderColor}
+          ${codeInfo.textColor}
+        `}
+      >
+        {value}
+      </div>
+    );
+  }
 
   return (
     <Select value={value} onValueChange={onChange} open={isOpen} onOpenChange={setIsOpen}>
@@ -39,7 +57,7 @@ export function AttendanceCell({ value, onChange, dateStr }: AttendanceCellProps
             <SelectItem key={code} value={code}>
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded ${info.color}`}></div>
-                <span>{code} - {info.label}</span>
+                <span className="font-medium">{code}</span>
               </div>
             </SelectItem>
           );

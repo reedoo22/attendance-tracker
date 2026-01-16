@@ -8,13 +8,15 @@ interface AttendanceTableProps {
   attendance: { [employeeId: number]: { [dateString: string]: string } };
   onAttendanceChange: (employeeId: number, dateStr: string, code: string) => void;
   dailyCounts: { [dateStr: string]: number };
+  readOnly?: boolean;
 }
 
 export function AttendanceTable({
   dates,
   attendance,
   onAttendanceChange,
-  dailyCounts
+  dailyCounts,
+  readOnly = false
 }: AttendanceTableProps) {
   const tableRef = useRef<HTMLDivElement>(null);
 
@@ -116,6 +118,7 @@ export function AttendanceTable({
                         value={value}
                         onChange={(newValue) => onAttendanceChange(employee.id, dateStr, newValue)}
                         dateStr={dateStr}
+                        readOnly={readOnly}
                       />
                     </td>
                   );

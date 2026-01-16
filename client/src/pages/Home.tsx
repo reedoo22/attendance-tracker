@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useAuth } from '@/_core/hooks/useAuth';
+import { useLogin } from '@/contexts/LoginContext';
 import { AttendanceTable } from '@/components/AttendanceTable';
 import { EmployeeStats } from '@/components/EmployeeStats';
 import { Legend } from '@/components/Legend';
@@ -8,13 +8,13 @@ import { AttendanceChart } from '@/components/AttendanceChart';
 import { useAttendanceData } from '@/hooks/useAttendanceData';
 import { EMPLOYEES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, RotateCcw, LogOut } from 'lucide-react';
+import { Download, Upload, RotateCcw, LogOut, Shield, User } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { getLoginUrl } from '@/const';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function Home() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { role, logout, canEdit, canViewAll } = useLogin();
 
   const {
     attendance,
@@ -88,6 +88,10 @@ export default function Home() {
 
   // Import handler
   const handleImport = () => {
+    if (!canEdit) {
+      toast.error('ليس لديك صلاحية لاستيراد البيانات');
+      return;
+    }
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -109,6 +113,10 @@ export default function Home() {
 
   // Reset handler
   const handleReset = () => {
+    if (!canEdit) {
+      toast.error('ليس لديك صلاحية لإعادة تعيين البيانات');
+      return;
+    }
     if (confirm('هل أنت متأكد من رغبتك في إعادة تعيين جميع البيانات؟')) {
       window.location.reload();
       toast.success('تم إعادة تعيين البيانات');
@@ -116,26 +124,28 @@ export default function Home() {
   };
 
   // Handle logout
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = () => {
+    logout();
     toast.success('تم تسجيل الخروج بنجاح');
   };
 
-  // Show login prompt if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
-          <h1 className="text-3xl font-bold text-blue-900 mb-4">نظام تتبع الحضور</h1>
-          <p className="text-gray-600 mb-6">الوردية المسائية</p>
-          <p className="text-gray-500 mb-8">يرجى تسجيل الدخول للوصول إلى النظام</p>
-          <a href={getLoginUrl()}>
-            <Button className="w-full">تسجيل الدخول</Button>
-          </a>
+  const getRoleBadge = () => {
+    if (role === 'admin') {
+      return (
+        <div className="flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+          <Shield className="w-4 h-4" />
+          مشرف
         </div>
-      </div>
-    );
-  }
+      );
+    } else {
+      return (
+        <div className="flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+          <User className="w-4 h-4" />
+          موظف
+        </div>
+      );
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50">
@@ -146,36 +156,40 @@ export default function Home() {
             <div>
               <h1 className="text-3xl font-bold text-blue-900">نظام تتبع الحضور</h1>
               <p className="text-gray-600 text-sm mt-1">الوردية المسائية | 21 يناير - 20 فبراير 2026</p>
-              {user && <p className="text-gray-500 text-xs mt-1">مرحباً {user.name}</p>}
             </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleExport}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <Download className="w-4 h-4" />
-                تصدير
-              </Button>
-              <Button
-                onClick={handleImport}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                استيراد
-              </Button>
-              <Button
-                onClick={handleReset}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <RotateCcw className="w-4 h-4" />
-                إعادة تعيين
-              </Button>
+            <div className="flex gap-2 items-center">
+              {getRoleBadge()}
+              {canEdit && (
+                <>
+                  <Button
+                    onClick={handleExport}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    تصدير
+                  </Button>
+                  <Button
+                    onClick={handleImport}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    استيراد
+                  </Button>
+                  <Button
+                    onClick={handleReset}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    إعادة تعيين
+                  </Button>
+                </>
+              )}
               <Button
                 onClick={handleLogout}
                 variant="outline"
@@ -189,6 +203,18 @@ export default function Home() {
           </div>
         </div>
       </header>
+
+      {/* Permission Alert for Employees */}
+      {role === 'employee' && (
+        <div className="container mx-auto px-4 py-4">
+          <Alert className="border-green-200 bg-green-50">
+            <User className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              أنت في وضع المشاهدة فقط. يمكنك عرض سجل حضورك الشخصي والإحصائيات الخاصة بك فقط.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -206,17 +232,26 @@ export default function Home() {
             <AttendanceTable
               dates={dates}
               attendance={attendance}
-              onAttendanceChange={updateAttendance}
+              onAttendanceChange={canEdit ? updateAttendance : () => {}}
               dailyCounts={dailyCounts}
+              readOnly={!canEdit}
             />
           </TabsContent>
 
           {/* Employees Tab */}
           <TabsContent value="employees" className="space-y-4">
-            <EmployeeGrid
-              attendance={attendance}
-              getEmployeeStats={getEmployeeStats}
-            />
+            {canViewAll ? (
+              <EmployeeGrid
+                attendance={attendance}
+                getEmployeeStats={getEmployeeStats}
+              />
+            ) : (
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <AlertDescription className="text-yellow-800">
+                  الموظفون لا يمكنهم عرض بيانات الموظفين الآخرين. هذه الميزة متاحة للمشرفين فقط.
+                </AlertDescription>
+              </Alert>
+            )}
           </TabsContent>
 
           {/* Statistics Tab */}
