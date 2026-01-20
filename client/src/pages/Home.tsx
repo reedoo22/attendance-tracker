@@ -81,7 +81,7 @@ export default function Home() {
   const handleAttendanceChange = (employeeId: number, dateStr: string, code: string) => {
     updateAttendance(employeeId, dateStr, code);
     if (editState.isEditing) {
-      trackChange(`${employeeId}|${dateStr}|${code}`, code);
+      trackChange(employeeId, dateStr, code);
     }
   };
 

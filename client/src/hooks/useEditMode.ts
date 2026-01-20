@@ -17,19 +17,17 @@ export function useEditMode() {
     lastSyncTime: null,
   });
 
-  const [pendingChanges, setPendingChanges] = useState<Map<string, any>>(new Map());
+  const [pendingChanges, setPendingChanges] = useState<Map<string, { employeeId: number; dateStr: string; status: string }>>(new Map());
+  const utils = trpc.useUtils();
 
   // Update mutation
   const updateMutation = trpc.attendance.updateRecord.useMutation({
     onSuccess: () => {
-      toast.success('تم حفظ التعديل بنجاح');
-      setEditState(prev => ({
-        ...prev,
-        lastSyncTime: new Date(),
-      }));
+      // Invalidate queries to refresh data
+      utils.attendance.getRecords.invalidate();
     },
     onError: (error) => {
-      toast.error('خطأ في حفظ التعديل');
+      toast.error('خطأ في حفظ التعديل: ' + (error?.message || 'حدث خطأ غير متوقع'));
       console.error('Error saving changes:', error);
     },
   });
@@ -60,10 +58,11 @@ export function useEditMode() {
   }, [editState.hasChanges]);
 
   // Track changes
-  const trackChange = useCallback((key: string, value: any) => {
+  const trackChange = useCallback((employeeId: number, dateStr: string, status: string) => {
+    const key = `${employeeId}|${dateStr}`;
     setPendingChanges(prev => {
       const newMap = new Map(prev);
-      newMap.set(key, value);
+      newMap.set(key, { employeeId, dateStr, status });
       return newMap;
     });
     setEditState(prev => ({
@@ -87,13 +86,21 @@ export function useEditMode() {
     try {
       // Save each change
       const entries = Array.from(pendingChanges.entries());
+      let successCount = 0;
+      let errorCount = 0;
+
       for (const [key, value] of entries) {
-        const [employeeId, dateStr, status] = key.split('|');
-        await updateMutation.mutateAsync({
-          employeeId: parseInt(employeeId),
-          attendanceDate: dateStr,
-          status: status as any,
-        });
+        try {
+          await updateMutation.mutateAsync({
+            employeeId: value.employeeId,
+            attendanceDate: value.dateStr,
+            status: value.status as any,
+          });
+          successCount++;
+        } catch (error) {
+          console.error(`Error saving record for ${key}:`, error);
+          errorCount++;
+        }
       }
 
       // Clear pending changes
@@ -105,7 +112,11 @@ export function useEditMode() {
         lastSyncTime: new Date(),
       }));
 
-      toast.success(`تم حفظ ${pendingChanges.size} تعديل بنجاح`);
+      if (errorCount === 0) {
+        toast.success(`تم حفظ ${successCount} تعديل بنجاح`);
+      } else {
+        toast.warning(`تم حفظ ${successCount} تعديل. فشل ${errorCount} تعديل`);
+      }
     } catch (error) {
       console.error('Error saving changes:', error);
       toast.error('خطأ في حفظ التعديلات');
