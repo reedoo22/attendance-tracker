@@ -6,6 +6,7 @@ import { Legend } from '@/components/Legend';
 import { EmployeeGrid } from '@/components/EmployeeGrid';
 import { AttendanceChart } from '@/components/AttendanceChart';
 import { EditModeToolbar } from '@/components/EditModeToolbar';
+import { EmployeeManagement } from '@/components/EmployeeManagement';
 import { useAttendanceData } from '@/hooks/useAttendanceData';
 import { useCloudAttendance } from '@/hooks/useCloudAttendance';
 import { useEditMode } from '@/hooks/useEditMode';
@@ -267,9 +268,10 @@ export default function Home() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="table" className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-5 mb-6">
+          <TabsList className="grid w-full max-w-3xl grid-cols-6 mb-6">
             <TabsTrigger value="table">جدول الحضور</TabsTrigger>
             <TabsTrigger value="employees">الموظفون</TabsTrigger>
+            <TabsTrigger value="manage">{canEdit ? 'إدارة الموظفين' : ''}</TabsTrigger>
             <TabsTrigger value="stats">الإحصائيات</TabsTrigger>
             <TabsTrigger value="charts">الرسوم البيانية</TabsTrigger>
             <TabsTrigger value="legend">المفاتيح</TabsTrigger>
@@ -291,6 +293,13 @@ export default function Home() {
               />
             )}
           </TabsContent>
+
+          {/* Employee Management Tab - Only for Admins */}
+          {canEdit && (
+            <TabsContent value="manage" className="space-y-4">
+              <EmployeeManagement />
+            </TabsContent>
+          )}
 
           {/* Employees Tab */}
           <TabsContent value="employees" className="space-y-4">

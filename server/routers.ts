@@ -9,7 +9,9 @@ import {
   getEmployees,
   getEmployeeById,
   getStatistics,
-  upsertStatistics
+  upsertStatistics,
+  addEmployee,
+  deleteEmployee
 } from "./db";
 
 export const appRouter = router({
@@ -100,6 +102,25 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const { employeeId, month, ...stats } = input;
         return await upsertStatistics(employeeId, month, stats);
+      }),
+
+    // Add new employee
+    addEmployee: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1, "اسم الموظف مطلوب"),
+        position: z.enum(["مشرف", "م/مشرف", "فرد"]),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return await addEmployee(input.name, input.position, input.email, input.phone);
+      }),
+
+    // Delete employee
+    deleteEmployee: protectedProcedure
+      .input(z.object({ employeeId: z.number() }))
+      .mutation(async ({ input }) => {
+        return await deleteEmployee(input.employeeId);
       }),
   }),
 });

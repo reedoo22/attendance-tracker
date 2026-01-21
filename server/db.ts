@@ -184,3 +184,41 @@ export async function upsertStatistics(employeeId: number, month: string, stats:
     return null;
   }
 }
+
+// Add new employee
+export async function addEmployee(name: string, position: string, email?: string, phone?: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    await db.insert(employees).values({
+      name,
+      position: position as any,
+      email,
+      phone,
+      isActive: 1
+    });
+    
+    // Fetch the newly created employee
+    const result = await db.select().from(employees).where(eq(employees.name, name)).orderBy((table) => table.id).limit(1);
+    
+    return { success: true, employee: result.length > 0 ? result[0] : null };
+  } catch (error) {
+    console.error("[Database] Failed to add employee:", error);
+    return null;
+  }
+}
+
+// Delete employee (soft delete)
+export async function deleteEmployee(employeeId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    await db.update(employees).set({ isActive: 0 }).where(eq(employees.id, employeeId));
+    return { success: true };
+  } catch (error) {
+    console.error("[Database] Failed to delete employee:", error);
+    return null;
+  }
+}
