@@ -10,7 +10,7 @@ import { EmployeeManagement } from '@/components/EmployeeManagement';
 import { useAttendanceData } from '@/hooks/useAttendanceData';
 import { useCloudAttendance } from '@/hooks/useCloudAttendance';
 import { useEditMode } from '@/hooks/useEditMode';
-import { useAutoSave } from '@/hooks/useAutoSave';
+import { useAutoSaveOptimized } from '@/hooks/useAutoSaveOptimized';
 import { Button } from '@/components/ui/button';
 import { Download, Upload, RotateCcw, LogOut, Shield, User, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,8 +23,13 @@ export default function Home() {
   const { editState, pendingChanges, enableEditMode, disableEditMode, trackChange, saveAllChanges, cancelChanges } = useEditMode();
   
   // Auto-save changes in the background
-  useAutoSave(pendingChanges, editState.isEditing, () => {
+  const { autoSaveStatus, isAutoSaving } = useAutoSaveOptimized(pendingChanges, editState.isEditing, () => {
     // Callback after auto-save completes
+  }, {
+    debounceMs: 3000,
+    maxRetries: 3,
+    retryDelayMs: 2000,
+    enableLogging: true,
   });
 
   const {
