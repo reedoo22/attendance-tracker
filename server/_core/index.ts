@@ -7,7 +7,6 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { setupMonitoring } from "./monitoring";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -34,10 +33,6 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  
-  // Setup monitoring
-  setupMonitoring(app);
-  
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
@@ -64,19 +59,7 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
-    console.log(`Health check available at http://localhost:${port}/health`);
   });
 }
-
-// Handle graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('[Server] SIGTERM signal received: closing HTTP server');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  console.log('[Server] SIGINT signal received: closing HTTP server');
-  process.exit(0);
-});
 
 startServer().catch(console.error);

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-
+import { useLogin } from '@/contexts/LoginContext';
 import { AttendanceTable } from '@/components/AttendanceTable';
 import { EmployeeStats } from '@/components/EmployeeStats';
 import { Legend } from '@/components/Legend';
@@ -10,25 +10,21 @@ import { EmployeeManagement } from '@/components/EmployeeManagement';
 import { useAttendanceData } from '@/hooks/useAttendanceData';
 import { useCloudAttendance } from '@/hooks/useCloudAttendance';
 import { useEditMode } from '@/hooks/useEditMode';
-import { useAutoSaveOptimized } from '@/hooks/useAutoSaveOptimized';
+import { useAutoSave } from '@/hooks/useAutoSave';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, RotateCcw, Loader2 } from 'lucide-react';
+import { Download, Upload, RotateCcw, LogOut, Shield, User, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function Home() {
+  const { role, logout, canEdit, canViewAll } = useLogin();
   const { employees: cloudEmployees, isLoading: isLoadingCloud } = useCloudAttendance();
   const { editState, pendingChanges, enableEditMode, disableEditMode, trackChange, saveAllChanges, cancelChanges } = useEditMode();
   
   // Auto-save changes in the background
-  const { autoSaveStatus, isAutoSaving } = useAutoSaveOptimized(pendingChanges, editState.isEditing, () => {
+  useAutoSave(pendingChanges, editState.isEditing, () => {
     // Callback after auto-save completes
-  }, {
-    debounceMs: 3000,
-    maxRetries: 3,
-    retryDelayMs: 2000,
-    enableLogging: true,
   });
 
   const {
@@ -112,6 +108,10 @@ export default function Home() {
 
   // Import handler
   const handleImport = () => {
+    if (!canEdit) {
+      toast.error('ليس لديك صلاحية لاستيراد البيانات');
+      return;
+    }
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -133,9 +133,37 @@ export default function Home() {
 
   // Reset handler
   const handleReset = () => {
+    if (!canEdit) {
+      toast.error('ليس لديك صلاحية لإعادة تعيين البيانات');
+      return;
+    }
     if (confirm('هل أنت متأكد من رغبتك في إعادة تعيين جميع البيانات؟')) {
       window.location.reload();
       toast.success('تم إعادة تعيين البيانات');
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    logout();
+    toast.success('تم تسجيل الخروج بنجاح');
+  };
+
+  const getRoleBadge = () => {
+    if (role === 'admin') {
+      return (
+        <div className="flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+          <Shield className="w-4 h-4" />
+          مشرف
+        </div>
+      );
+    } else {
+      return (
+        <div className="flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+          <User className="w-4 h-4" />
+          موظف
+        </div>
+      );
     }
   };
 
@@ -156,54 +184,70 @@ export default function Home() {
                   جاري التحديث...
                 </div>
               )}
+              {getRoleBadge()}
+              {canEdit && (
+                <>
+                  <Button
+                    onClick={handleExport}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    تصدير
+                  </Button>
+                  <Button
+                    onClick={handleImport}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    استيراد
+                  </Button>
+                  <Button
+                    onClick={handleReset}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    إعادة تعيين
+                  </Button>
+                </>
+              )}
               <Button
-                onClick={handleExport}
+                onClick={handleLogout}
                 variant="outline"
                 size="sm"
                 className="gap-2"
               >
-                <Download className="w-4 h-4" />
-                تصدير
-              </Button>
-              <Button
-                onClick={handleImport}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                استيراد
-              </Button>
-              <Button
-                onClick={handleReset}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <RotateCcw className="w-4 h-4" />
-                إعادة تعيين
+                <LogOut className="w-4 h-4" />
+                خروج
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Edit Mode Toolbar */}
-      <div className="sticky top-16 z-40 bg-white border-b">
-        <div className="container mx-auto px-4 py-3">
-          <EditModeToolbar
-            isEditing={editState.isEditing}
-            hasChanges={editState.hasChanges}
-            isSaving={editState.isSaving}
-            lastSyncTime={editState.lastSyncTime}
-            pendingChangesCount={pendingChanges.size}
-            onEnableEdit={enableEditMode}
-            onDisableEdit={disableEditMode}
-            onSave={saveAllChanges}
-            onCancel={cancelChanges}
-          />
+      {/* Edit Mode Toolbar - Only for Admins */}
+      {canEdit && (
+        <div className="sticky top-16 z-40 bg-white border-b">
+          <div className="container mx-auto px-4 py-3">
+            <EditModeToolbar
+              isEditing={editState.isEditing}
+              hasChanges={editState.hasChanges}
+              isSaving={editState.isSaving}
+              lastSyncTime={editState.lastSyncTime}
+              pendingChangesCount={pendingChanges.size}
+              onEnableEdit={enableEditMode}
+              onDisableEdit={disableEditMode}
+              onSave={saveAllChanges}
+              onCancel={cancelChanges}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Cloud Sync Status */}
       {!isLoadingCloud && (
@@ -216,7 +260,17 @@ export default function Home() {
         </div>
       )}
 
-
+      {/* Permission Alert for Employees */}
+      {role === 'employee' && (
+        <div className="container mx-auto px-4 py-4">
+          <Alert className="border-green-200 bg-green-50">
+            <User className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              أنت في وضع المشاهدة فقط. يمكنك عرض سجل حضورك الشخصي والإحصائيات الخاصة بك فقط.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -224,7 +278,7 @@ export default function Home() {
           <TabsList className="grid w-full max-w-3xl grid-cols-6 mb-6">
             <TabsTrigger value="table">جدول الحضور</TabsTrigger>
             <TabsTrigger value="employees">الموظفون</TabsTrigger>
-            <TabsTrigger value="manage">إدارة الموظفين</TabsTrigger>
+            <TabsTrigger value="manage">{canEdit ? 'إدارة الموظفين' : ''}</TabsTrigger>
             <TabsTrigger value="stats">الإحصائيات</TabsTrigger>
             <TabsTrigger value="charts">الرسوم البيانية</TabsTrigger>
             <TabsTrigger value="legend">المفاتيح</TabsTrigger>
@@ -240,24 +294,34 @@ export default function Home() {
               <AttendanceTable
                 dates={dates}
                 attendance={attendance}
-                onAttendanceChange={handleAttendanceChange}
+                onAttendanceChange={canEdit ? handleAttendanceChange : () => {}}
                 dailyCounts={dailyCounts}
-                readOnly={!editState.isEditing}
+                readOnly={!canEdit || !editState.isEditing}
               />
             )}
           </TabsContent>
 
-          {/* Employee Management Tab */}
-          <TabsContent value="manage" className="space-y-4">
-            <EmployeeManagement />
-          </TabsContent>
+          {/* Employee Management Tab - Only for Admins */}
+          {canEdit && (
+            <TabsContent value="manage" className="space-y-4">
+              <EmployeeManagement />
+            </TabsContent>
+          )}
 
           {/* Employees Tab */}
           <TabsContent value="employees" className="space-y-4">
-            <EmployeeGrid
-              attendance={attendance}
-              getEmployeeStats={getEmployeeStats}
-            />
+            {canViewAll ? (
+              <EmployeeGrid
+                attendance={attendance}
+                getEmployeeStats={getEmployeeStats}
+              />
+            ) : (
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <AlertDescription className="text-yellow-800">
+                  الموظفون لا يمكنهم عرض بيانات الموظفين الآخرين. هذه الميزة متاحة للمشرفين فقط.
+                </AlertDescription>
+              </Alert>
+            )}
           </TabsContent>
 
           {/* Statistics Tab */}
