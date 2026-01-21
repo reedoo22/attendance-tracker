@@ -10,6 +10,7 @@ import { EmployeeManagement } from '@/components/EmployeeManagement';
 import { useAttendanceData } from '@/hooks/useAttendanceData';
 import { useCloudAttendance } from '@/hooks/useCloudAttendance';
 import { useEditMode } from '@/hooks/useEditMode';
+import { useAutoSave } from '@/hooks/useAutoSave';
 import { Button } from '@/components/ui/button';
 import { Download, Upload, RotateCcw, LogOut, Shield, User, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +21,11 @@ export default function Home() {
   const { role, logout, canEdit, canViewAll } = useLogin();
   const { employees: cloudEmployees, isLoading: isLoadingCloud } = useCloudAttendance();
   const { editState, pendingChanges, enableEditMode, disableEditMode, trackChange, saveAllChanges, cancelChanges } = useEditMode();
+  
+  // Auto-save changes in the background
+  useAutoSave(pendingChanges, editState.isEditing, () => {
+    // Callback after auto-save completes
+  });
 
   const {
     attendance,
@@ -83,6 +89,7 @@ export default function Home() {
     updateAttendance(employeeId, dateStr, code);
     if (editState.isEditing) {
       trackChange(employeeId, dateStr, code);
+      // Auto-save will be triggered by useAutoSave hook
     }
   };
 
